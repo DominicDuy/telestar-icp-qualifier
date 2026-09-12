@@ -1,0 +1,482 @@
+{
+  "name": "ICP Qualifier Bot v2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "9104928d-4af0-4eb9-8039-46e07e29f7a2",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3312,
+        1312
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "TeleStar ICP Qualifier Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.from.id }}",
+        "text": "✅ Đã nhận file, đang process ICP check... Sẽ gửi kết quả khi xong.",
+        "additionalFields": {}
+      },
+      "id": "508babfe-7acd-438c-b449-73cf45699346",
+      "name": "Notify Processing",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3008,
+        1168
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "TeleStar ICP Qualifier Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.message.document }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b04c9488-234f-432b-a001-eb89ddd4d915",
+      "name": "Does It Has Document?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3088,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.document.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "a7bb5e64-a790-49ae-9bef-cfd82b65f677",
+      "name": "Get File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -2864,
+        1312
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "TeleStar ICP Qualifier Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f75a2065-eb6c-4f87-a4cf-52f47507fd1c",
+      "name": "Parse Spreadsheet",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        -2640,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all();\nconst colAliases = ['website','url','domain','homepage','site','company url','company website'];\nconst websiteCol = Object.keys(rows[0].json).find(k => colAliases.some(alias => k.toLowerCase().includes(alias)));\nif (!websiteCol) throw new Error('No website column found. Expected one of: Website, URL, Domain, Homepage, Site');\nconst seen = new Set();\nconst results = [];\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\nfor (let i = 0; i < rows.length; i++) {\n  const raw = rows[i].json[websiteCol] || '';\n  const normalized = raw.toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/.*$/, '').trim();\n  if (!normalized || !normalized.includes('.')) continue;\n  results.push({ json: { ...rows[i].json, website: normalized, _is_first_occurrence: !seen.has(normalized), _row_index: i, source_type: 'file_upload', _chat_id: chatId } });\n  seen.add(normalized);\n}\nreturn results;"
+      },
+      "id": "9a402531-5135-41d1-b621-d03344e976ed",
+      "name": "File Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2416,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json._is_first_occurrence }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f79880e8-83b2-4df6-a1fd-814d6629d937",
+      "name": "Is First Occurrence?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst text = $json.message?.text || $json.result?.text || '';\nconst urlRegex = /(?:https?:\\/\\/)?(?:www\\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\\.[a-zA-Z]{2,}(?:\\.[a-zA-Z]{2,})?)/g;\nconst matches = [...text.matchAll(urlRegex)];\nconst websites = matches.map(m => m[1].toLowerCase().replace(/\\/$/, ''));\nconst unique = [...new Set(websites)];\nif (unique.length === 0) throw new Error('No websites found in your message.');\nreturn unique.map(site => ({\n  json: { website: site, source_type: 'text_message', original_row: null, _chat_id: $('Telegram Trigger').first().json.message.chat.id }\n}));"
+      },
+      "id": "58f2a290-92a7-4d36-ac27-47a0f92c6def",
+      "name": "Text Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        1504
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "cc150577-878d-4957-b614-139cf253a50c",
+      "name": "Merge Unique",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1968,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1681e8ce-f751-4722-88db-fd0aa900c691",
+      "name": "Count Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        48,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all();\nconst pass=items.filter(i=>i.json.icp_result==='PASS');\nconst review=items.filter(i=>i.json.icp_result==='REVIEW');\nconst fail=items.filter(i=>i.json.icp_result==='FAIL');\nconst chatId=items[0]?.json._chat_id;\nconst truncated=items[0]?.json._batch_truncated;\nconst totalCount=items[0]?.json._total_unique_count||items.length;\nconst fmt=(item,emoji)=>emoji+' '+item.json.website+' — '+item.json.icp_reasoning;\nlet msg='ICP Check ('+items.length+(truncated?' of '+totalCount:'')+' websites)\\n\\n';\nif(pass.length)msg+=pass.map(i=>fmt(i,'✅')).join('\\n')+'\\n\\n';\nif(review.length)msg+=review.map(i=>fmt(i,'🔵')).join('\\n')+'\\n\\n';\nif(fail.length)msg+=fail.map(i=>fmt(i,'❌')).join('\\n')+'\\n\\n';\nif(truncated)msg+='⚠️ Showing first '+items.length+' of '+totalCount+'\\n';\nmsg+='✅ '+pass.length+' PASS | 🔵 '+review.length+' REVIEW | ❌ '+fail.length+' FAIL';\n\n\nreturn[{json:{text:msg,chat_id:chatId}}];"
+      },
+      "id": "de53b143-326f-4e9c-b79e-fbbf6a81958d",
+      "name": "Format Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "ff36e024-4ca9-4fb7-af46-b577629b0266",
+      "name": "Send Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        560,
+        896
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "TeleStar ICP Qualifier Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "csv",
+        "options": {
+          "fileName": "ICP_Check_Results.csv"
+        }
+      },
+      "id": "b9a0b2ee-485b-4dc6-baed-136f6d85f308",
+      "name": "Write CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Merge Unique').first().json._chat_id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "id": "abd0515e-5ee5-4cb5-8e1b-b70fd4b86cab",
+      "name": "Send CSV File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        848,
+        1088
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "TeleStar ICP Qualifier Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "id": "a848942d-7287-4d2f-b78a-3a8d2672b12d",
+      "name": "Run ICP Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -960,
+        1408
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Does It Has Document?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File": {
+      "main": [
+        [
+          {
+            "node": "Parse Spreadsheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Spreadsheet": {
+      "main": [
+        [
+          {
+            "node": "File Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File Parser": {
+      "main": [
+        [
+          {
+            "node": "Is First Occurrence?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Parser": {
+      "main": [
+        [
+          {
+            "node": "Merge Unique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is First Occurrence?": {
+      "main": [
+        [
+          {
+            "node": "Merge Unique",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Count Check": {
+      "main": [
+        [
+          {
+            "node": "Format Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Write CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Text": {
+      "main": [
+        [
+          {
+            "node": "Send Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write CSV": {
+      "main": [
+        [
+          {
+            "node": "Send CSV File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does It Has Document?": {
+      "main": [
+        [
+          {
+            "node": "Get File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Text Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Unique": {
+      "main": [
+        [
+          {
+            "node": "Run ICP Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run ICP Core": {
+      "main": [
+        [
+          {
+            "node": "Count Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "vr4GGDRScBtU2L1a",
+    "timeSavedMode": "fixed",
+    "timeSavedPerExecution": 7
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REDACTED"
+  },
+  "tags": []
+}
