@@ -1,0 +1,987 @@
+{
+  "name": "ICP Core",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "747c33f3-c11a-4f91-91a3-5bdcb62a9d56",
+      "name": "Execute Sub-workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2044,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst items=$input.all();\nconst total=items.length;\nconst chatId=items[0]?.json?._chat_id||'';\nreturn items.map(function(it,i){\n  return{json:{\n    ...it.json,\n    _batch_size:total,\n    _total_unique_count:total,\n    _batch_truncated:false\n  }};\n});"
+      },
+      "id": "a6f957df-7b64-4ba0-b125-a989911921ce",
+      "name": "Batch Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1744,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "TeleStar ICP Check History",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Qualified",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1520,
+        1184
+      ],
+      "id": "1a352b2f-042f-4f8c-94fe-8bbde41448f2",
+      "name": "Check Cache Q",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "TeleStar ICP Check History",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 859416213,
+          "mode": "list",
+          "cachedResultName": "Not Qualified",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=859416213"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1296,
+        1456
+      ],
+      "id": "2a53e2b2-beb2-4875-a73e-15ef1c0c8bf6",
+      "name": "Check Cache NQ",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "TeleStar ICP Check History",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "DNC",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=1478995869",
+          "mode": "list",
+          "value": 1478995869
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1072,
+        1632
+      ],
+      "id": "a1027b99-317e-4058-bcc7-db9701473d50",
+      "name": "Check Cache DNC",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b434f5ee-c4e2-4324-92ef-241ec38cfc3f",
+      "name": "Merge URL and Q",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1296,
+        1248
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c5dcb8c7-bae1-40b9-9798-ac05bda70322",
+      "name": "Merge URL and NQ",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1072,
+        1344
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d8ff87bf-6aaa-4770-8fef-60432c8368a6",
+      "name": "Merge URL and DNC",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -848,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst norm = (s) => (s || '').toLowerCase().trim();\nconst dncRows = items.filter(i => i.json.engagement_status && i.json.website && !i.json.icp_result);\nconst icpRows = items.filter(i => i.json.icp_result && i.json.website && !i.json.engagement_status);\nconst statusLabels = {account:'Active Account',past_account:'Past Account',past_meeting:'Past Meeting'};\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst result = [];\nitems.forEach((item, idx) => {\n  if (item.json.icp_result && item.json.website && !item.json.engagement_status) return;\n  if (item.json.engagement_status && item.json.website) return;\n  const url = norm(item.json.website);\n  const dncMatch = dncRows.find(c => norm(c.json.website) === url);\n  if (dncMatch) {\n    const st = dncMatch.json.engagement_status || 'dnc';\n    const label = statusLabels[st] || st;\n    let dateStr = '';\n    if (dncMatch.json.last_contact_date) {\n      const d = new Date(dncMatch.json.last_contact_date);\n      if (!isNaN(d)) dateStr = months[d.getMonth()] + ' ' + d.getDate();\n    }\n    const notesStr = dncMatch.json.notes || '';\n    const ae = (notesStr.match(/AE:([^|]+)/) || [])[1];\n    const sdr = (notesStr.match(/SDR:([^|]+)/) || [])[1];\n    let people = '';\n    if (ae && sdr) people = ae.trim() + ' \\u2192 ' + sdr.trim();\n    else if (ae) people = ae.trim();\n    const parts = ['DNC', label];\n    if (dateStr) parts.push(dateStr);\n    if (people) parts.push(people);\n    result.push({\n      json: {\n        ...item.json,\n        _cache_hit: true,\n        _dnc_hit: true,\n        _from_cache: true,\n        _cached_icp_result: 'FAIL',\n        _cached_industry: '',\n        _cached_hq_country: '',\n        _cached_reasoning: parts.join(' \\u00B7 '),\n      },\n      pairedItem: {item: idx},\n    });\n    return;\n  }\n  const icpMatch = icpRows.find(c => norm(c.json.website) === url);\n  if (icpMatch) {\n    result.push({\n      json: {\n        ...item.json,\n        _cache_hit: true,\n        _cached_icp_result: icpMatch.json.icp_result,\n        _cached_industry: icpMatch.json.industry || '',\n        _cached_hq_country: icpMatch.json.hq_country || '',\n        _cached_reasoning: icpMatch.json.icp_reasoning || '',\n      },\n      pairedItem: {item: idx},\n    });\n    return;\n  }\n  result.push({json: {...item.json, _cache_hit: false}, pairedItem: {item: idx}});\n});\nreturn result;"
+      },
+      "id": "57cb703c-0ff8-45f4-8549-85c62770262d",
+      "name": "Pack Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5d848d1a-9226-46d4-b6fa-7455059869bd",
+      "name": "Loop Over Websites",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cache_check_1",
+              "leftValue": "={{ $json._cache_hit }}",
+              "operator": {
+                "operation": "equals",
+                "type": "boolean"
+              },
+              "rightValue": true
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "fd63096f-a0e2-4ade-a399-298408af7b20",
+      "name": "Already Analyzed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "YOUR_SERPER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.website }}"
+            },
+            {
+              "name": "num",
+              "value": 5
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0729943d-a12a-4ad3-a047-17805dd93169",
+      "name": "Serper Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        1584
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const orig=$('Loop Over Websites').item.json;\nconst s=$json;\nconst kg=s.knowledgeGraph||{};\nlet text='';\nif(kg.title) text+=kg.title+(kg.type?' ('+kg.type+')':'')+': '+(kg.description||'')+'\\n';\nif(kg.attributes){text+=Object.entries(kg.attributes).map(([k,v])=>k+': '+v).join(' | ')+'\\n';}\ntext+='\\n';\nconst organics=(s.organic||[]).slice(0,6);\ntext+=organics.map(r=>'['+r.title+'] '+(r.snippet||'')+' ('+r.link+')').join('\\n');\nconst hasContent=text.trim().length>10;\nreturn{json:{\n  ...orig,\n  _fetch_status: hasContent?'serper_success':'serper_no_results',\n  _website_text: text.trim()||'No company information found via search'\n}};"
+      },
+      "id": "754f7ba6-7f90-40e9-9f10-d67a676ccc8c",
+      "name": "Parse Serper",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Website: ' + $json.website + '\\nFetch status: ' + $json._fetch_status + '\\n\\nWebsite content (first 4000 chars):\\n' + $json._website_text.substring(0, 4000) }}",
+        "options": {
+          "systemMessage": "You are an ICP analyst for TeleStar (telestar.vn), a B2B SDR outsourcing agency.\nTeleStar's clients are B2B SaaS companies that hire TeleStar to run outbound sales \u2014 book meetings with THEIR buyers. You are evaluating whether a given company could be a TeleStar CLIENT (not whether their product is good).\n\n\u2550\u2550\u2550 WHAT COUNTS AS B2B SaaS (broad definition) \u2550\u2550\u2550\n\nANY company that sells software to businesses on a recurring basis qualifies. This INCLUDES:\n- Vertical SaaS (hospitality, maritime, healthcare, fintech, legal, etc.)\n- Database / infrastructure SaaS (Redis, MariaDB, DataStax, etc.)\n- Cybersecurity SaaS (MDR, SIEM, zero trust, threat intel, etc.)\n- Developer tools with SaaS pricing (observability, CI/CD, etc.)\n- Platform companies with subscription revenue\n- MSP with own proprietary platform/software AND managed operations on top of it (see NQ7 exception)\n\nThis EXCLUDES:\n- Pure course/content providers \u2014 companies whose primary revenue is selling courses, training content, or educational programs (even to enterprises). Their product is CONTENT, not SOFTWARE. A corporate training company selling leadership workshops is not SaaS. An online academy selling certifications is not SaaS. Only qualifies if the company sells a software PLATFORM (LMS, authoring tool, assessment engine) with recurring subscription, not just access to course content.\n\nTEST: Does the company build and sell a software tool, or does it create and sell educational content? Software tool = potential client. Content/courses = not a client\n\nThe buyer's INDUSTRY does not matter. TeleStar sells to the SOFTWARE COMPANY, not to their end-customers.\n\n\u2550\u2550\u2550 IDEAL CLIENT \u2014 CONTEXT \u2550\u2550\u2550\n\n- Owns a B2B SaaS or software product with recurring revenue (subscription, license, or platform fees)\n- OR operates as MSP with own proprietary platform + managed operations (see NQ7 exception)\n- 20\u2013500 employees (sweet spot 20\u2013200)\n- HQ or primary buyers in: AU, SG, UK, US, IL, DK, NO, SE, NZ, FR, TW, CH, NL, DE, CA\n- English is working language for sales\n\n\u2550\u2550\u2550 DISQUALIFIERS \u2014 CHECK ALL, REPORT EVERY ONE THAT APPLIES \u2550\u2550\u2550\n\nNQ1: Extreme headcount - \u226410 employees OR \u22651,000 employees. 11\u2013999 is NOT auto-disqualified. Being \"enterprise\", \"publicly traded\", or \"high valuation\" is NOT this disqualifier by itself \u2014 only literal headcount matters.\n\nNQ2: Customers are not real businesses. Covers TWO cases:\n(a) Individual consumers: news/media apps, dating apps, job boards for job seekers, student learning platforms, personal finance apps, on-demand home services (cleaning, laundry, repair).\n(b) Businesses but extremely small/niche/informal, low ability or willingness to pay for B2B software: dentists, tailor shops, salons/gyms, small F&B shops, sellers on Shopee/Lazada/Etsy, street vendors, discount membership clubs.\nReal cases seen: Homeez (renovation marketplace connecting homeowners-contractors), Dobby Walla (B2C laundry pickup), Mission X (gig platform for gaming companions), FactsBlend (scan-menu app for small restaurants), Foodcrush Solutions (Yelp-style restaurant discovery), Hitechzone (consumer discount club).\nTEST: who DIRECTLY BUYS the software \u2014 not who those buyers ultimately serve. A PropTech SaaS sold to letting agents and asset management firms is B2B (buyers are businesses), even though those agents serve individual landlords/tenants. A dental SaaS sold to clinic chains is B2B. Only apply NQ2 when the software company sells DIRECTLY to individuals or to micro-businesses too small to have real software budgets.\nEDTECH EXCEPTION: Educational institutions (schools, universities, corporate training departments) that purchase software through institutional budgets and procurement processes ARE valid B2B customers. An LMS, assessment platform, video engagement tool, or learning analytics SaaS sold to a university IT department or school district is B2B \u2014 the buyer is the institution, not the student. Only apply NQ2 when individual students or parents pay out-of-pocket (e.g., tutoring apps, exam prep subscriptions, self-paced course platforms marketed directly to learners). Proven TeleStar clients in this category: Annoto (video engagement SaaS sold to Bentley, FSU, UMich \u2014 33mo client), VeduBox (LMS platform sold to training organizations \u2014 16mo client).\n\nNQ3: Not a commercial for-profit entity. Covers: government agencies/ministries, non-profits/NGOs/charities, industry associations/chambers of commerce, academic/research initiatives from universities, social enterprises operating under charitable/public-benefit mandate, organizations whose primary function is serving government agencies (government contractors, gov-tech integrators, public-sector-only vendors).\nReal cases seen: Asia AI Association (industry association), QuantumVIO (University of Melbourne research initiative).\nNOT NQ3: SaaS companies that sell to BOTH commercial AND government sectors (e.g., cybersecurity SaaS with a gov vertical alongside enterprise clients). Only disqualify if government/nonprofit is the PRIMARY or SOLE market.\n\nNQ4: Website inaccessible / broken / placeholder / parked \u2014 cannot verify product or operations.\n\nNQ5: Company shut down / no longer operating.\n\nNQ6: Fully acquired subsidiary \u2014 brand merged into parent, no independent CEO/pricing/sales motion. When applying NQ6, ALWAYS include the acquiring/parent company name and website domain in the reason field (e.g. \"Acquired by MRI Software (mrisoftware.com) in 2021\") so the team can evaluate the parent company as a separate lead.\n\nNQ7: Services-first business / any outsourcing or labor-leasing agency without own IP. Covers ALL of the following:\n- IT consulting / IT staffing / body shop / IT outsourcing\n- Dev agency / software house working project-by-project\n- System integrator (SI) / value-added reseller (VAR)\n- Cloud implementation partner / cloud consulting (without own platform)\n- Staffing & recruiting firms / talent acquisition agencies / executive search firms\n- Temp agencies / staff augmentation firms / contract workforce providers\n- Body-shopping companies (placing engineers/developers at client sites)\n- EOR/PEO companies whose core business is placing workers\n- Marketing agency / creative agency / PR agency / digital agency / advertising agency\n- Management consulting firms\n- Any company whose core revenue comes from placing, leasing, or providing human workers to other businesses\nLABOR-LEASING TEST: Does the company's core revenue come from placing, leasing, or providing human workers to other businesses? If YES \u2192 NQ7, regardless of industry label.\nReal cases seen: Cloud2SME (Microsoft cloud MSP), Wizeewig (Odoo ERP implementation partner), RapidData (systems integrator for governments), Bizibody Technology (LegalTech reseller), Root Security (cybersecurity VAR/distributor).\nEXCEPTION 1 \u2014 Own SaaS product: has own SaaS product with independent pricing page + versioning/roadmap (not just project SOWs). Exception bar is high \u2014 if in doubt, default to NQ7.\nEXCEPTION 2 \u2014 MSP with own platform: Company has proprietary platform/software AND provides managed operations on top of it. Must have own solution - not just manage third-party infrastructure (AWS/Azure/GCP). Examples: Brandshield (own brand protection platform + managed monitoring team), FastNetMon (own DDoS detection software + managed service), Stormwall (own DDoS mitigation platform + managed security ops). Company that ONLY manages client's cloud/infrastructure without own tools = still NQ7. TEST: Does the company have its own software product that clients use, AND also operate/manage it for them? If yes = NOT NQ7.\n\nNQ8: Company PROVIDES sales/lead-gen/SDR SERVICES (not tools). Covers: SDR-as-a-service, appointment setting agencies, cold outreach agencies, telemarketing services, lead generation service providers.\nReal cases seen: Kris@Work, KrispCall, Nektar.ai.\nNOT NQ8: SaaS/software that helps sales teams work better \u2014 CRM (HubSpot, Salesforce, Pipedrive), sales engagement platforms (Outreach, Salesloft), prospecting tools (ZoomInfo, Lusha, Apollo), call recording/revenue intelligence (Gong, Chorus), LinkedIn automation (Heyreach, Expandi), email outreach tools (Mailshake, Smartlead), AI SDR tools (11x.ai, Artisan AI). These companies sell software tools TO sales teams \u2014 they are potential TeleStar CLIENTS, not competitors. TEST: Does this company PROVIDE outreach services (human SDRs doing the work), or does it SELL software tools that sales teams use themselves? Services = NQ8. Tools = NOT NQ8.\n\nNQ9: Pure BPO / outsourcing operator \u2014 core business is RUNNING outsourcing operations (not selling software). Covers: call/contact center operators, KPO (knowledge process outsourcing), marketing outsourcing agencies, HR outsourcing/PEO operators, back-office/admin outsourcing, sales outsourcing operators.\nNOT NQ9: SaaS that powers BPO operations (e.g., CCaaS software) is still eligible.\n\nNQ10: Marketplace/platform connecting third-party buyers and sellers, monetizing via transaction commission or listing fees \u2014 not a fixed SaaS subscription. Applies to both B2B marketplaces (industrial parts sourcing, factory-to-retailer platforms) and B2C marketplaces (home services, consumer goods).\nReal cases seen: i4Mart.com (industrial spare parts marketplace), FactoryJet (construction materials B2B marketplace), Homeez, Dobby Walla.\n\nNQ11: HQ India + India-majority workforce. Multi-office company with non-India HQ + non-India leadership majority = OK.\n\nNQ12: Buyer-market price/language anchor mismatch. Disqualify if HQ or primary target market is in: Vietnam; Pakistan, Bangladesh, Sri Lanka, Nepal; India (domestic-target); mainland China (excluding Taiwan, Hong Kong); Japan; tier-3 SEA \u2014 Cambodia, Laos, Myanmar (NOT Indonesia, Malaysia, Thailand, Philippines, Singapore \u2014 these are accepted); all of Africa including South Africa; MENA non-GCC \u2014 Egypt, Morocco, Tunisia, Algeria, Jordan, Lebanon, Iraq (GCC \u2014 UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman \u2014 still accepted); all of Latin America.\nEXCEPTION: Western-HQ companies with a subsidiary/office in any of the above are still OK (buying decision sits at HQ).\n\nNQ13: Blockchain / Web3 / crypto is the company's PRIMARY, CORE business and revenue source. Covers:\n- Crypto exchange / trading platform (spot, derivatives, OTC)\n- Blockchain gaming / GameFi / P2E (play-to-earn) / NFT-based games\n- NFT marketplace\n- DeFi protocol (DEX, lending, yield farming, liquid staking)\n- Crypto wallet / custody provider\n- Token issuance platform / launchpad / ICO-STO platform\n- Blockchain infrastructure (L1/L2 chain, node/RPC provider, blockchain-as-a-service)\n- Crypto asset management / crypto fund\n- Mining / staking-as-a-service\n- Metaverse platform built around virtual land/token economy\n- DAO tooling where the token/governance mechanism IS the product\nNOT NQ13: company applies blockchain merely as underlying technology for a different vertical \u2014 e.g. supply chain traceability, identity/KYC verification, contract/audit trail, ESG/carbon credit provenance, payments settlement rail where the product sold is still ordinary B2B fintech SaaS. Also NOT NQ13: SaaS selling TO crypto companies (e.g. Chainalysis compliance tools, Elliptic analytics) \u2014 evaluate by actual vertical instead.\nTEST: is crypto/token/blockchain itself the product being sold and monetized, or just plumbing behind a different product? If plumbing \u2192 evaluate by the actual vertical instead.\n\nNQ14: Hardware as primary revenue (not software).\n\nNQ15: Traditional Software \u2014 primary revenue from one-time license sales, on-premise deployment, no recurring SaaS subscription. Signals: \"Buy Now\", \"One-time Purchase\", \"Perpetual License\", annual maintenance fees as main recurring component. NOT NQ15: hybrid model with both license and SaaS options \u2014 evaluate the SaaS side.\n\nNQ16: Niche, hard-to-reach industry \u2014 decision-makers unreachable via LinkedIn/cold email, or buying process incompatible with SDR outbound. Agriculture Tech, Maritime/Shipping/Logistics, Public Sector (procurement/RFP-only buying), Local services B2B (cleaning companies, security guards, pest control). NOT NQ16: SaaS that sells TO these industries (e.g. AgriTech SaaS selling to large farming enterprises with VP-level buyers on LinkedIn = evaluate normally).\n\nIf a company does not match ANY of NQ1\u2013NQ16 \u2192 verdict is PASS. Never invent a disqualifier outside this list. Revenue model (license vs subscription), market segment, valuation, or \"feels too big/small\" are NOT valid reasons on their own unless they map to a specific NQ code above.\n\n\u2550\u2550\u2550 VIRTUAL ADDRESS / SHELL INCORPORATION WARNING \u2550\u2550\u2550\n\nRegistering a virtual address in a Western country is cheap (~$250). Companies from blocked countries (India, China, Pakistan, Vietnam) routinely register in US, SG, UK, or EU to appear Western-based.\n\nWhen a company lists a Western HQ but shows ANY of these signals, set icp_result to REVIEW (not PASS or FAIL):\n- Website \"About\" page mentions only offices/teams in blocked countries\n- Leadership/founder names strongly suggest blocked-country origin with no evidence of Western presence\n- Company description mentions offshore/nearshore delivery model\n- \"Pte Ltd\" Singapore registration + all content suggests India/Pakistan operations\n- No physical office evidence (no office photos, no local job postings, no local team members mentioned)\n- Website content, case studies, or client logos are exclusively from blocked-country markets\n\nWhen flagging as REVIEW for this reason, add in icp_reasoning: \"Possible virtual address \u2014 verify genuine [listed country] operations. Leadership/content suggests [suspected actual country].\"\n\nThis does NOT apply when a company clearly has genuine Western operations (Western leadership on LinkedIn, local job postings, office photos, Western client logos, etc.).\n\n\u2550\u2550\u2550 INSTRUCTIONS \u2550\u2550\u2550\n\n- Use training knowledge for well-known companies even if website content is sparse. State this in reasoning.\n- ALWAYS verify website content matches the company name \u2014 do not assume from domain name alone.\n- Be specific: name actual product, actual business model, actual signal. Not generic descriptions.\n- Return ONLY valid JSON, no markdown fences, no text outside the object.\n\n\u2550\u2550\u2550 OUTPUT FORMAT \u2550\u2550\u2550\n\n{\"icp_result\":\"PASS or FAIL or REVIEW\",\"industry\":\"single label\",\"hq_country\":\"2-letter ISO code or Unknown\",\"disqualifiers\":[{\"code\":\"NQ1\",\"reason\":\"specific reason, max 20 words\"}],\"icp_reasoning\":\"\",\"company_name\":\"official company name or Unknown\"}\n\nFIELD RULES:\n- disqualifiers: empty array [] if PASS. If FAIL, one object PER triggered code \u2014 \"code\" must be EXACTLY one value from NQ1\u2013NQ16 (never a different string). \"reason\" is specific to this company, max 20 words. If multiple disqualifiers apply, list them all as separate array entries.\n- icp_reasoning: leave as \"\" when icp_result is FAIL (reasoning lives in disqualifiers instead). Fill with ONE sentence only when icp_result is PASS (why it fits) or REVIEW (what's unclear or needs verification).\n- industry: canonical label (e.g., \"Cybersecurity\",\"Fintech\",\"HR Tech\",\"DevTools\",\"Vertical SaaS\",\"IT Services\") or \"Unknown\".\n- hq_country: 2-letter ISO or \"Unknown\".\n- company_name: official company name from the website content (not the domain string). \"Unknown\" if unclear.\n- Use REVIEW only when website content is truly insufficient AND company is unknown from training data, OR when virtual address signals are detected (see warning above). Do not use REVIEW as a middle ground \u2014 commit to PASS or FAIL when you have enough information."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        496,
+        1584
+      ],
+      "id": "3b0b1472-737b-4331-9efb-1ec1b1b6bed5",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5-20250929",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "maxTokensToSample": 500
+        }
+      },
+      "id": "2dc843f0-3f39-4886-aaf1-cc67b553f1e0",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        1712
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const ALLOWED_CODES = ['NQ1','NQ2','NQ3','NQ4','NQ5','NQ6','NQ7','NQ8','NQ9','NQ10','NQ11','NQ12','NQ13','NQ14','NQ15','NQ16'];\n\nif ($json._from_cache) {\n  return { json: { ...$json } };\n}\n\nconst haikuRaw = $json;\nconst orig = $('Parse Serper').item.json;\nlet result = {};\ntry {\n  const txt = haikuRaw.output || '';\n  const m = txt.match(/\\{[\\s\\S]*\\}/);\n  if (m) result = JSON.parse(m[0]);\n} catch (e) { result = {}; }\n\nconst fetchStatus = orig._fetch_status || 'failed';\nconst website = orig.website || '';\nlet icp_result = result.icp_result || 'REVIEW';\n\nconst rawDisq = Array.isArray(result.disqualifiers) ? result.disqualifiers : [];\nconst validDisq = rawDisq.filter(d => d && ALLOWED_CODES.includes(d.code));\nconst invalidDisq = rawDisq.filter(d => !d || !ALLOWED_CODES.includes(d.code));\n\nlet icp_reasoning;\nif (icp_result === 'FAIL' && validDisq.length > 0) {\n  icp_reasoning = validDisq.map(d => `${d.code}: ${d.reason}`).join('\\n');\n} else {\n  icp_reasoning = result.icp_reasoning || 'Could not parse AI response - manual check needed';\n}\n\nif (invalidDisq.length > 0) {\n  icp_reasoning += `\\n[WARNING: invalid code from model: ${invalidDisq.map(d => d && d.code).join(', ')}]`;\n}\n\nconst knownFromTraining = result.known_from_training || false;\nif ((fetchStatus === 'failed' || fetchStatus === 'spa_no_content') && !knownFromTraining) {\n  const r = icp_reasoning.toLowerCase();\n  if (!r.includes('fetch') && !r.includes('training') && !r.includes('content') && !r.includes('known')) {\n    icp_reasoning += ' [website not fetchable]';\n  }\n}\n\nconst scored = {\n  website,\n  checked_at: new Date(Date.now()+25200000).toISOString().slice(0,19).replace('T',' '),\n  company_name: result.company_name || '',\n  industry: result.industry || '',\n  hq_country: result.hq_country || '',\n  icp_result,\n  icp_score: 0,\n  icp_reasoning,\n  icp_fails: validDisq.map(d => d.code).join(', '),\n  known_from_training: knownFromTraining,\n  _chat_id: orig._chat_id,\n  _fetch_status: fetchStatus,\n  _total_unique_count: orig._total_unique_count,\n  _batch_truncated: orig._batch_truncated,\n  source_type: orig.source_type\n};\nreturn { json: scored };"
+      },
+      "name": "Save Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        1536
+      ],
+      "id": "5e0f5b26-9179-49cb-affd-49cee3cd5d78"
+    },
+    {
+      "parameters": {
+        "jsCode": "const o=$json;\nreturn [{json:{website:o.website,company_name:o._cached_company_name||'',industry:o._cached_industry||'',hq_country:o._cached_hq_country||'',icp_result:o._cached_icp_result,icp_score:0,icp_reasoning:'[Cached] '+(o._cached_reasoning||''),_chat_id:o._chat_id,_total_unique_count:o._total_unique_count,_batch_size:o._batch_size,_batch_truncated:o._batch_truncated,_from_cache:true}}];"
+      },
+      "id": "2f8716b2-7ddc-457a-b1bf-eb12fa3c6c8a",
+      "name": "Use Cached Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "if1",
+              "leftValue": "={{ String($json._from_cache) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "02aaeb44-ed9d-4c0f-9ac3-b6cd38607bf7",
+      "name": "Is Fresh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wts1",
+              "leftValue": "={{ $json.icp_result }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "73c3d4f9-45aa-4dde-9fbb-334ece1abf3e",
+      "name": "Write to Sheet?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Qualified",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "website": "={{ $json.website }}",
+            "company_name": "={{ $json.company_name }}",
+            "industry": "={{ $json.industry }}",
+            "hq_country": "={{ $json.hq_country }}",
+            "icp_result": "={{ $json.icp_result }}",
+            "icp_reasoning": "={{ $json.icp_reasoning }}",
+            "checked_at": "={{ $json.checked_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hq_country",
+              "displayName": "hq_country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "icp_result",
+              "displayName": "icp_result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "icp_reasoning",
+              "displayName": "icp_reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checked_at",
+              "displayName": "checked_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Save Qualified",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        1264
+      ],
+      "id": "4486ea94-fcd2-4a50-a3ac-068c7d78552b",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 859416213,
+          "mode": "list",
+          "cachedResultName": "Not Qualified",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=859416213"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "checked_at": "={{ $json.checked_at }}",
+            "website": "={{ $json.website }}",
+            "company_name": "={{ $json.company_name }}",
+            "industry": "={{ $json.industry }}",
+            "hq_country": "={{ $json.hq_country }}",
+            "icp_result": "={{ $json.icp_result }}",
+            "icp_reasoning": "={{ $json.icp_reasoning }}",
+            "icp_fails": "={{ $json.icp_fails }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hq_country",
+              "displayName": "hq_country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "icp_result",
+              "displayName": "icp_result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "icp_reasoning",
+              "displayName": "icp_reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "icp_fails",
+              "displayName": "icp_fails",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "checked_at",
+              "displayName": "checked_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Save Not Qualified",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        1520
+      ],
+      "id": "3649d511-8bb7-4b6d-ba72-ff068093c4d6",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "bfc693e5-8f98-40c0-b92b-0a59e88deb79",
+      "name": "Rate Limit 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        1680
+      ],
+      "webhookId": "REDACTED"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        1088
+      ],
+      "id": "83e13f74-c735-420e-aacf-f39d9d276d02"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Sub-workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Batch Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Websites": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already Analyzed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Guard": {
+      "main": [
+        [
+          {
+            "node": "Check Cache Q",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Cache NQ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge URL and Q",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Cache DNC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Result": {
+      "main": [
+        [
+          {
+            "node": "Is Fresh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Serper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Sheet?": {
+      "main": [
+        [
+          {
+            "node": "Save Qualified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Not Qualified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Qualified": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Not Qualified": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Analyzed?": {
+      "main": [
+        [
+          {
+            "node": "Use Cached Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serper Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Cached Result": {
+      "main": [
+        [
+          {
+            "node": "Save Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cache Q": {
+      "main": [
+        [
+          {
+            "node": "Merge URL and Q",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Check Cache NQ": {
+      "main": [
+        [
+          {
+            "node": "Merge URL and NQ",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Pack Cache": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Websites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Fresh?": {
+      "main": [
+        [
+          {
+            "node": "Write to Sheet?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cache DNC": {
+      "main": [
+        [
+          {
+            "node": "Merge URL and DNC",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parse Serper": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge URL and Q": {
+      "main": [
+        [
+          {
+            "node": "Merge URL and NQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge URL and NQ": {
+      "main": [
+        [
+          {
+            "node": "Merge URL and DNC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge URL and DNC": {
+      "main": [
+        [
+          {
+            "node": "Pack Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Save Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit 2s": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Websites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "vr4GGDRScBtU2L1a"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REDACTED"
+  },
+  "tags": []
+}
